@@ -754,12 +754,12 @@ func MakeOptInAndAssetTransferTxns(
 	assetID int64,
 	params *SuggestedParams,
 ) (transactions *TransactionSignerArray, err error) {
-	var ASSET_OPT_IN_MBR uint64 = 100000
-	var FLAT_FEE uint64 = 1000
-	var ACCOUNT_MBR uint64 = 100000
+	var ASSET_OPT_IN_MBR int64 = 100000
+	var FLAT_FEE int64 = 1000
+	var ACCOUNT_MBR int64 = 100000
 
 	if params.Fee > 0 {
-		FLAT_FEE = uint64(params.Fee)
+		FLAT_FEE = int64(params.Fee)
 	}
 
 	senderExtractedAmount, _ := senderAlgoAmount.Extract()
@@ -767,8 +767,13 @@ func MakeOptInAndAssetTransferTxns(
 	receiverExtractedAmount, _ := receiverAlgoAmount.Extract()
 	receiverExtractedMinBalance, _ := receiverMinBalanceAmount.Extract()
 
+	senderExtractedAmountInt64, _ := ConvertUInt64ToInt64(senderExtractedAmount)
+	senderExtractedMinBalanceInt64, _ := ConvertUInt64ToInt64(senderExtractedMinBalance)
+	receiverExtractedAmountInt64, _ := ConvertUInt64ToInt64(receiverExtractedAmount)
+	receiverExtractedMinBalanceInt64, _ := ConvertUInt64ToInt64(receiverExtractedMinBalance)
+
 	// If receiver has enough algo to opt-in to the asset
-	if receiverExtractedAmount-receiverExtractedMinBalance >= ASSET_OPT_IN_MBR+FLAT_FEE {
+	if receiverExtractedAmountInt64-receiverExtractedMinBalanceInt64 >= ASSET_OPT_IN_MBR+FLAT_FEE {
 		optInAmount := MakeUint64(0)
 		receiverOptInTxn, receiverOptInTxnError := MakeAssetTransferTxn(
 			receiver,
@@ -824,22 +829,27 @@ func MakeOptInAndAssetTransferTxns(
 	} else {
 		// If receiver does not have enough algo to opt-in to the asset
 
-		var receiverExtraAlgoAmount uint64 = 0
-		if receiverExtractedAmount == 0 {
+		var receiverExtraAlgoAmount int64 = 0
+		if receiverExtractedAmountInt64 == 0 {
 			receiverExtraAlgoAmount = ACCOUNT_MBR + ASSET_OPT_IN_MBR + FLAT_FEE
 		} else {
-			algoAmount := (ASSET_OPT_IN_MBR + FLAT_FEE) - (receiverExtractedAmount - receiverExtractedMinBalance)
+			algoAmount := (ASSET_OPT_IN_MBR + FLAT_FEE) - (receiverExtractedAmountInt64 - receiverExtractedMinBalanceInt64)
 			if algoAmount > 0 {
 				receiverExtraAlgoAmount = algoAmount
 			}
 		}
 
-		if senderExtractedAmount-senderExtractedMinBalance < receiverExtractedAmount+FLAT_FEE+FLAT_FEE {
+		if senderExtractedAmountInt64-senderExtractedMinBalanceInt64 < receiverExtractedAmountInt64+FLAT_FEE+FLAT_FEE {
 			err = fmt.Errorf("sender does not have enough algo to cover recivers needs")
 			return
 		}
 
-		paymentAMount := MakeUint64(receiverExtraAlgoAmount)
+		var receiverExtraAlgoAmountUint64 uint64 = 0
+		if receiverExtraAlgoAmount > 0 {
+			receiverExtraAlgoAmountUint64 = uint64(receiverExtraAlgoAmount)
+		}
+
+		paymentAMount := MakeUint64(receiverExtraAlgoAmountUint64)
 		paymentTxn, paymentTxnError := MakePaymentTxn(
 			sender,
 			receiver,

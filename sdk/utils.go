@@ -37,6 +37,16 @@ func (i Uint64) Extract() (value uint64, err error) {
 	return
 }
 
+func ConvertUInt64ToInt64(i uint64) (value int64, err error) {
+	if i > math.MaxInt64 {
+		err = fmt.Errorf("Overflow: uint64 value is too large to convert to int64.")
+		return
+	} else {
+		value = int64(i)
+		return
+	}
+}
+
 type TransactionSignerArray struct {
 	signerItems  []TransactionSignerItem
 	transactions *BytesArray
@@ -48,6 +58,14 @@ func (tsa *TransactionSignerArray) Length() int {
 
 func (tsa *TransactionSignerArray) GetSigner(index int) string {
 	return tsa.signerItems[index].signer
+}
+
+func (tsa *TransactionSignerArray) GetSignerItem(index int) TransactionSignerItem {
+	return tsa.signerItems[index]
+}
+
+func (tsa *TransactionSignerArray) GetSignerItems() []TransactionSignerItem {
+	return tsa.signerItems
 }
 
 func (tsa *TransactionSignerArray) GetTxnFromSigner(index int) []byte {
@@ -70,6 +88,10 @@ type TransactionSignerItem struct {
 	signer      string
 	transaction []byte
 }
+
+func (tsa *TransactionSignerItem) GetSigner() string { return tsa.signer }
+
+func (tsa *TransactionSignerItem) GetTransaction() []byte { return tsa.transaction }
 
 type StringArray struct {
 	values []string
