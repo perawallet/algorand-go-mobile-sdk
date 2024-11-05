@@ -8,106 +8,6 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 )
 
-// MakeARC59OptInTxn creates the app call transaction for opting into ARC59 protocol.
-func MakeARC59OptInTxn(
-	sender,
-	appAddress string,
-	appID,
-	assetID int64,
-	suggestedParams *SuggestedParams,
-) (assignedTxns *BytesArray, err error) {
-	appCallSuggestedParams := *suggestedParams
-	appCallSuggestedParams.FlatFee = true
-	if appCallSuggestedParams.Fee == 0 {
-		appCallSuggestedParams.Fee = 2 * 1000
-	} else {
-		appCallSuggestedParams.Fee *= 2
-	}
-
-	amount := MakeUint64(100000)
-	paymentTxn, paymentTxnError := MakePaymentTxn(
-		sender,
-		appAddress,
-		&amount,
-		nil,
-		"",
-		suggestedParams,
-	)
-	if paymentTxnError != nil {
-		err = paymentTxnError
-		return
-	}
-
-	appArgumentsByteArray, appArgumentsError := MakeAppArgumentsByteArrayWithAsset(
-		"arc59_optRouterIn(uint64)void",
-		assetID,
-	)
-	if appArgumentsError != nil {
-		err = appArgumentsError
-		return
-	}
-
-	accountStringArray := StringArray{values: []string{appAddress}}
-	assetInt64Array := Int64Array{values: []int64{assetID}}
-
-	appCallTxn, appCallTxnError := MakeApplicationNoOpTx(
-		appID,
-		&appArgumentsByteArray,
-		&accountStringArray,
-		&Int64Array{values: []int64{}}, // empty array
-		&assetInt64Array,
-		&AppBoxRefArray{value: []types.AppBoxReference{}}, // empty ref
-		&appCallSuggestedParams,
-		sender,
-		nil,
-	)
-	if appCallTxnError != nil {
-		err = appCallTxnError
-		return
-	}
-
-	bytesArrayTxns := BytesArray{values: [][]byte{paymentTxn, appCallTxn}}
-	assignedTxns, err = AssignGroupID(&bytesArrayTxns)
-	return
-}
-
-// MakeAndSignARC59OptInTxn creates the app call transaction for opting into ARC59 protocol and returns the signed transaction.
-func MakeAndSignARC59OptInTxn(
-	sender,
-	appAddress string,
-	appID,
-	assetID int64,
-	suggestedParams *SuggestedParams,
-	sk []byte,
-) (signedTxns *BytesArray, err error) {
-	groupTxns, groupTxnError := MakeARC59OptInTxn(
-		sender,
-		appAddress,
-		appID,
-		assetID,
-		suggestedParams,
-	)
-	if groupTxnError != nil {
-		err = groupTxnError
-		return
-	}
-
-	// Sign each transaction individually
-	txns := make([][]byte, len(groupTxns.values))
-	for i, txn := range groupTxns.values {
-		signedTxn, signError := SignTransaction(sk, txn)
-		if signError != nil {
-			err = signError
-			return
-		}
-		txns[i] = signedTxn
-	}
-
-
-	signedTxns = &BytesArray{values: txns}
-	return
-}
-
 // MakeARC59SendTxn creates the payment, asset transfer and app call transactions for sending an asset with the ARC59 protocol.
 func MakeARC59SendTxn(
 	sender,
@@ -120,24 +20,35 @@ func MakeARC59SendTxn(
 	appID,
 	assetID int64,
 	suggestedParams *SuggestedParams,
+	is_arc59_opted_in bool,
 	extraAlgoAmount *Uint64,
 ) (assignedTxns *BytesArray, err error) {
 	appCallSuggestedParams := *suggestedParams
+	suggestedParamsForArc59OptIn := *suggestedParams
+
+	suggestedParamsForArc59OptIn.FlatFee = true
 	appCallSuggestedParams.FlatFee = true
+
 	if appCallSuggestedParams.Fee == 0 {
 		appCallSuggestedParams.Fee = (innerTxCount + 1) * 1000
+		suggestedParamsForArc59OptIn.Fee = 2 * 1000
 	} else {
 		appCallSuggestedParams.Fee *= (innerTxCount + 1)
+		suggestedParamsForArc59OptIn.Fee *= 2
 	}
 
-	decodedAlgoAmount, err := extraAlgoAmount.Extract()
-	decodedTxnAmount, err := minimumBalanceRequirement.Extract()
+	decodedAlgoAmount, _ := extraAlgoAmount.Extract()
+	decodedTxnAmount, _ := minimumBalanceRequirement.Extract()
 	totalTxnAmount := decodedAlgoAmount + decodedTxnAmount
 	txnPaymentAmount := MakeUint64(totalTxnAmount)
 
 	if decodedAlgoAmount > 0 {
 		appCallSuggestedParams.Fee += 1000
 	}
+
+	bytesArrayTxns := BytesArray{values: [][]byte{}}
+
+	// 1) Payment TX
 
 	paymentTxn, paymentTxnError := MakePaymentTxn(
 		sender,
@@ -152,6 +63,42 @@ func MakeARC59SendTxn(
 		return
 	}
 
+	bytesArrayTxns.Append(paymentTxn)
+
+	// 2) ARC59 Opt in TX
+	if !is_arc59_opted_in {
+		appArgumentsByteArray, appArgumentsError := MakeAppArgumentsByteArrayWithAsset(
+			"arc59_optRouterIn(uint64)void",
+			assetID,
+		)
+		if appArgumentsError != nil {
+			err = appArgumentsError
+			return
+		}
+
+		accountStringArray := StringArray{values: []string{appAddress}}
+		assetInt64Array := Int64Array{values: []int64{assetID}}
+
+		arc59OptInCallTxn, arc59OptInCallTxnError := MakeApplicationNoOpTx(
+			appID,
+			&appArgumentsByteArray,
+			&accountStringArray,
+			&Int64Array{values: []int64{}}, // empty array
+			&assetInt64Array,
+			&AppBoxRefArray{value: []types.AppBoxReference{}}, // empty ref
+			&suggestedParamsForArc59OptIn,
+			sender,
+			nil,
+		)
+		if arc59OptInCallTxnError != nil {
+			err = arc59OptInCallTxnError
+			return
+		}
+
+		bytesArrayTxns.Append(arc59OptInCallTxn)
+	}
+
+	// 3) Axfer
 	assetTxn, assetTxnError := MakeAssetTransferTxn(
 		sender,
 		appAddress,
@@ -165,7 +112,9 @@ func MakeARC59SendTxn(
 		err = assetTxnError
 		return
 	}
+	bytesArrayTxns.Append(assetTxn)
 
+	// 4) sendAsset app call
 	receiverDecoded, err := DecodeAddress(receiver)
 
 	appArgumentsByteArray, appArgumentsError := MakeAppArgumentsByteArrayWithAddressAndAmount(
@@ -202,8 +151,9 @@ func MakeARC59SendTxn(
 		err = appCallTxnError
 		return
 	}
+	bytesArrayTxns.Append(appCallTxn)
 
-	bytesArrayTxns := BytesArray{values: [][]byte{paymentTxn, assetTxn, appCallTxn}}
+	// Assign grups and return
 
 	assignedTxns, err = AssignGroupID(&bytesArrayTxns)
 	return
@@ -222,6 +172,7 @@ func MakeAndSignARC59SendTxn(
 	appID,
 	assetID int64,
 	suggestedParams *SuggestedParams,
+	is_arc59_opted_in bool,
 	extraAlgoAmount *Uint64,
 	sk []byte,
 ) (signedTxns *BytesArray, err error) {
@@ -236,6 +187,7 @@ func MakeAndSignARC59SendTxn(
 		appID,
 		assetID,
 		suggestedParams,
+		is_arc59_opted_in,
 		extraAlgoAmount,
 	)
 	if groupTxnError != nil {
@@ -268,6 +220,10 @@ func MakeARC59ClaimTxn(
 	isOptedInToAsset,
 	isClaimingAlgo bool,
 ) (assignedTxns *BytesArray, err error) {
+	zeroFeeParams := *suggestedParams
+	zeroFeeParams.FlatFee = true
+	zeroFeeParams.Fee = 0
+
 	appCallSuggestedParams := *suggestedParams
 	appCallSuggestedParams.FlatFee = true
 	if appCallSuggestedParams.Fee == 0 {
@@ -287,39 +243,62 @@ func MakeARC59ClaimTxn(
 		inboxAccountStringArray = StringArray{values: []string{inboxAccountAddress}}
 	}
 
-	decodedReceiver, err := DecodeAddress(receiver)
+	decodedReceiver, _ := DecodeAddress(receiver)
 
-	claimAlgoTxnSuggestedParams := *suggestedParams
-	claimAlgoTxnSuggestedParams.FlatFee = true
-	claimAlgoTxnSuggestedParams.Fee = 0
+	bytesArrayTxns := BytesArray{values: [][]byte{}}
 
-	methodNameHex := MethodName("arc59_claimAlgo()void")
-	methodNameBytes, err := hex.DecodeString(methodNameHex)
-	methodNameAppArgs := [][]byte{methodNameBytes}
-	methodNameBytesArray := BytesArray{values: methodNameAppArgs}
+	// 1) claim tx
+	if isClaimingAlgo {
+		methodNameHex := MethodName("arc59_claimAlgo()void")
+		methodNameBytes, _ := hex.DecodeString(methodNameHex)
+		methodNameAppArgs := [][]byte{methodNameBytes}
+		methodNameBytesArray := BytesArray{values: methodNameAppArgs}
 
-	claimAlgoTxnBoxReferenceItem := types.AppBoxReference{
-		Name:  decodedReceiver[:],
+		claimAlgoTxnBoxReferenceItem := types.AppBoxReference{
+			Name: decodedReceiver[:],
+		}
+		claimAlgoTxnBoxReferenceArray := []types.AppBoxReference{claimAlgoTxnBoxReferenceItem}
+		claimAlgoAppBoxRefArray := AppBoxRefArray{value: claimAlgoTxnBoxReferenceArray}
+
+		claimAlgoAppCallTxn, claimAlgoAppCallTxnError := MakeApplicationNoOpTx(
+			appID,
+			&methodNameBytesArray,
+			&inboxAccountStringArray,
+			&Int64Array{values: []int64{}}, // empty array
+			&Int64Array{values: []int64{}}, // empty array
+			&claimAlgoAppBoxRefArray,
+			&zeroFeeParams,
+			receiver,
+			nil,
+		)
+		if claimAlgoAppCallTxnError != nil {
+			err = claimAlgoAppCallTxnError
+			return
+		}
+		bytesArrayTxns.Append(claimAlgoAppCallTxn)
 	}
-	claimAlgoTxnBoxReferenceArray := []types.AppBoxReference{claimAlgoTxnBoxReferenceItem}
-	claimAlgoAppBoxRefArray := AppBoxRefArray{value: claimAlgoTxnBoxReferenceArray}
+	// 2) opt in call if necassary
+	if !isOptedInToAsset {
+		appCallSuggestedParams.Fee += 1000
 
-	claimAlgoAppCallTxn, claimAlgoAppCallTxnError := MakeApplicationNoOpTx(
-		appID,
-		&methodNameBytesArray,
-		&inboxAccountStringArray,
-		&Int64Array{values: []int64{}}, // empty array
-		&Int64Array{values: []int64{}}, // empty array
-		&claimAlgoAppBoxRefArray,
-		&claimAlgoTxnSuggestedParams,
-		receiver,
-		nil,
-	)
-	if claimAlgoAppCallTxnError != nil {
-		err = claimAlgoAppCallTxnError
-		return
+		optInAmount := MakeUint64(0)
+		optInTxn, assetTxnError := MakeAssetTransferTxn(
+			receiver,
+			receiver,
+			"",
+			&optInAmount,
+			nil,
+			&zeroFeeParams,
+			assetID,
+		)
+		if assetTxnError != nil {
+			err = assetTxnError
+			return
+		}
+		bytesArrayTxns.Append(optInTxn)
 	}
 
+	// 3) claim call
 	appArgumentsByteArray, appArgumentsError := MakeAppArgumentsByteArrayWithAsset(
 		"arc59_claim(uint64)void",
 		assetID,
@@ -347,36 +326,7 @@ func MakeARC59ClaimTxn(
 		err = appCallTxnError
 		return
 	}
-
-	bytesArrayTxns := BytesArray{values: [][]byte{}}
-	if !isOptedInToAsset {
-		optInAmount := MakeUint64(0)
-		optInTxn, assetTxnError := MakeAssetTransferTxn(
-			receiver,
-			receiver,
-			"",
-			&optInAmount,
-			nil,
-			suggestedParams,
-			assetID,
-		)
-		if assetTxnError != nil {
-			err = assetTxnError
-			return
-		}
-
-		if isClaimingAlgo {
-			bytesArrayTxns = BytesArray{values: [][]byte{claimAlgoAppCallTxn, optInTxn, appCallTxn}}
-		} else {
-			bytesArrayTxns = BytesArray{values: [][]byte{optInTxn, appCallTxn}}
-		}
-	} else {
-		if isClaimingAlgo {
-			bytesArrayTxns = BytesArray{values: [][]byte{claimAlgoAppCallTxn, appCallTxn}}
-		} else {
-			bytesArrayTxns = BytesArray{values: [][]byte{appCallTxn}}
-		}
-	}
+	bytesArrayTxns.Append(appCallTxn)
 
 	assignedTxns, err = AssignGroupID(&bytesArrayTxns)
 	return
@@ -464,7 +414,7 @@ func MakeARC59RejectTxn(
 	methodNameBytesArray := BytesArray{values: methodNameAppArgs}
 
 	claimAlgoTxnBoxReferenceItem := types.AppBoxReference{
-		Name:  decodedReceiver[:],
+		Name: decodedReceiver[:],
 	}
 	claimAlgoTxnBoxReferenceArray := []types.AppBoxReference{claimAlgoTxnBoxReferenceItem}
 	claimAlgoAppBoxRefArray := AppBoxRefArray{value: claimAlgoTxnBoxReferenceArray}

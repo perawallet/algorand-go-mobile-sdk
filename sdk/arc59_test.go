@@ -2,51 +2,12 @@ package sdk
 
 import (
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/algorand/go-algorand-sdk/v2/mnemonic"
 	"github.com/stretchr/testify/require"
 )
-
-func TestMakeAndSignARC59OptInTxn(t *testing.T) {
-	t.Parallel()
-	// corresponds to SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4
-	sk, err := mnemonic.ToPrivateKey("ocean tank film evil fresh ability capital huge ensure chat small dentist garlic slam decide extra fly train cross rib dog federal monitor about thought")
-	require.NoError(t, err)
-
-	gh, err := base64.StdEncoding.DecodeString("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
-	require.NoError(t, err)
-
-	suggested_params := SuggestedParams{
-		Fee:             0,
-		GenesisID:       "testnet-v1.0",
-		GenesisHash:     gh,
-		FirstRoundValid: 40432872,
-		LastRoundValid:  40433872,
-		FlatFee:         false,
-	}
-
-	// https://testnet.explorer.perawallet.app/tx-group/UGbP1Hz6KLznhcbB6+6qCS2UiUWzLVsc+nO2WJvi7uY=/
-	txnsByteArray, err := MakeAndSignARC59OptInTxn(
-		"SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4",
-		"MEKFJGDJTHSBCAUMH5UFV7BGICQ3UCGUVR5CD6GURFUBYHUYSWQDLEGVXU",
-		655494101,
-		655977010,
-		&suggested_params,
-		sk,
-	)
-	require.NoError(t, err)
-	txns := txnsByteArray.Extract()
-
-	expectedStxnBytes, err := base64.StdEncoding.DecodeString("gqNzaWfEQFeOrmXMibgrrFvt/LpN9V4T3VAUqIywyVqODPrY/00syeYaP83zNHBvND2HvriQQo8NyRaEvb30bYnozcR8pACjdHhuiqNhbXTOAAGGoKNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHnJL9z3H4kzJsIJNZOQflcpkswjKbuFC6ij79fN5zVqomx2zgJo+NCjcmN2xCBhFFSYaZnkEQKMP2ha/CZAoboI1Kx6IfjUiWgcHpiVoKNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWjcGF5")
-	require.NoError(t, err)
-	require.Equal(t, expectedStxnBytes, txns[0])
-
-	expectedStxnBytes_2, err := base64.StdEncoding.DecodeString("gqNzaWfEQE8zvhg+o8qoawSeZByUfpoNU0Y0CJ0/Y5WQta0lZQgXcqOsNq0hOSo9TZVWqK/A35QxJBRddAHw98ZeXNiB3AmjdHhujKRhcGFhksQE6FQIEMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQgYRRUmGmZ5BECjD9oWvwmQKG6CNSseiH41IloHB6YlaCkYXBpZM4nEgvVo2ZlZc0H0KJmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgeckv3PcfiTMmwgk1k5B+VymSzCMpu4ULqKPv183nNWqibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWkYXBwbA==")
-	require.NoError(t, err)
-	require.Equal(t, expectedStxnBytes_2, txns[1])
-
-}
 
 func TestMakeAndSignARC59SendTxn(t *testing.T) {
 	t.Parallel()
@@ -68,40 +29,80 @@ func TestMakeAndSignARC59SendTxn(t *testing.T) {
 
 	amount := MakeUint64(10)
 	min_balance_requirement := MakeUint64(228100)
-	algoAmount := MakeUint64(0)
+	algoAmount := MakeUint64(20)
 
+	// test with arc 59 false
 	txnsByteArray, err := MakeAndSignARC59SendTxn(
 		"SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4",
 		"MKKKFL5JBJTOCEMEZUAJKTWD5FYAI2FOLW5BP5N5YR37ZG5FHLTUYCFC6U",
-		"MEKFJGDJTHSBCAUMH5UFV7BGICQ3UCGUVR5CD6GURFUBYHUYSWQDLEGVXU",
+		"YIIC6GF4DUJYZTYTZ5UEOAXONUUKZRDFOTV4EKSGD5E7BYE6EE3IVPYEDQ",
 		"6LD3JUWPR72DX5JNGPHH2QEM2IKRA3SXGFSRR4P7TB5JMVPQTIYCXLUMCQ",
 		&amount,
 		&min_balance_requirement,
 		5,
-		655494101,
+		643020148,
 		655977010,
 		&suggested_params,
+		false,
 		&algoAmount,
 		sk,
 	)
 	require.NoError(t, err)
 	txns := txnsByteArray.Extract()
-
+	require.Equal(t, len(txns), 4)
 	require.Equal(
 		t,
-		"gqNzaWfEQAJI+XbWaTbRFOipX1jvScgbbuW+QW9Hd2+jXcTU91516zWztA7jZewq78vq3mITew0HyPfmJSCAX7FaYMauZgGjdHhuiqNhbXTOAAN7BKNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHtvbPII4jrvH+i4COcUIOLk3LLQSSF2X5IuB8aVvhSHomx2zgJo+NCjcmN2xCBhFFSYaZnkEQKMP2ha/CZAoboI1Kx6IfjUiWgcHpiVoKNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWjcGF5",
+		"gqNzaWfEQH6SBWU7qw/2IImisTh6tdiJvvBbfNiwDmw4KXzowkMhB1naf/MVee7D1dAO6FfkBRVZTPUqBvZt1ENOAZoX+gyjdHhuiqNhbXTOAAN7GKNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIEH2wbyJwlTR8QvNTIBsrUopXCnUTeA/FO0UKNHAX057omx2zgJo+NCjcmN2xCDCEC8YvB0TjM8Tz2hHAu5tKKzEZXTrwipGH0nw4J4hNqNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWjcGF5",
 		base64.StdEncoding.EncodeToString(txns[0]),
 	)
-
 	require.Equal(
 		t,
-		"gqNzaWfEQBjnzGDGxeQsJlRavC0m2/iXdjOCNgiKhDqnDC3f9MBMSJKoSbSTTaaXTmjCRxgcRLbZ/v9t24ccOyUaF042zwejdHhui6RhYW10CqRhcmN2xCBhFFSYaZnkEQKMP2ha/CZAoboI1Kx6IfjUiWgcHpiVoKNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHtvbPII4jrvH+i4COcUIOLk3LLQSSF2X5IuB8aVvhSHomx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpWF4ZmVypHhhaWTOJxlqMg==",
+		"gqNzaWfEQC8Navcft57gM4gOSofCc8/3MrY6eo/SIOrmzWyHDvrAvyrt1EAuzxwgagDPSaYRkxulL7fAUt65kxEqbT7uzgqjdHhujKRhcGFhksQE6FQIEMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQgwhAvGLwdE4zPE89oRwLubSisxGV068IqRh9J8OCeITakYXBpZM4mU7V0o2ZlZc0H0KJmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgQfbBvInCVNHxC81MgGytSilcKdRN4D8U7RQo0cBfTnuibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWkYXBwbA==",
 		base64.StdEncoding.EncodeToString(txns[1]),
 	)
-
 	require.Equal(
 		t,
-		"gqNzaWfEQC+328x1ZoqDprBNBz2Zc2ZvC2CTVR/IS9hvpilakRKyY7UwaJVAHA+SYjEbSnsdp5rIM34omz68YmDMplEWeQejdHhujaRhcGFhk8QECFMe18QgYpSir6kKZuERhM0AlU7D6XAEaK5duhf1vcR3/JulOufECAAAAAAAAAAApGFwYXORzicZajKkYXBhdJLEIGKUoq+pCmbhEYTNAJVOw+lwBGiuXboX9b3Ed/ybpTrnxCDyx7TSz4/0O/UtM859QIzSFRBuVzFlGPH/mHqWVfCaMKRhcGJ4kYGhbsQgYpSir6kKZuERhM0AlU7D6XAEaK5duhf1vcR3/JulOuekYXBpZM4nEgvVo2ZlZc0XcKJmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQge29s8gjiOu8f6LgI5xQg4uTcstBJIXZfki4HxpW+FIeibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWkYXBwbA==",
+		"gqNzaWfEQDnGRnANVgGFmQxtVb0ymPI1JTgFiFUvJxQ9C8Wu+jRvQMB4B+tJp6kKK+M5Gay8AGcZdI7qNWC94PYgc4R2wAqjdHhui6RhYW10CqRhcmN2xCDCEC8YvB0TjM8Tz2hHAu5tKKzEZXTrwipGH0nw4J4hNqNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIEH2wbyJwlTR8QvNTIBsrUopXCnUTeA/FO0UKNHAX057omx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpWF4ZmVypHhhaWTOJxlqMg==",
+		base64.StdEncoding.EncodeToString(txns[2]),
+	)
+	require.Equal(
+		t,
+		"gqNzaWfEQKE+AQk9falzkBIpzhQ4yycSXnIq2yzETYnuJPJ6UqFooLCRL4qPBFdwEKvAQEA3ZEYawURdCRB9eYtEKwdx5gqjdHhujaRhcGFhk8QECFMe18QgYpSir6kKZuERhM0AlU7D6XAEaK5duhf1vcR3/JulOufECAAAAAAAAAAUpGFwYXORzicZajKkYXBhdJLEIGKUoq+pCmbhEYTNAJVOw+lwBGiuXboX9b3Ed/ybpTrnxCDyx7TSz4/0O/UtM859QIzSFRBuVzFlGPH/mHqWVfCaMKRhcGJ4kYGhbsQgYpSir6kKZuERhM0AlU7D6XAEaK5duhf1vcR3/JulOuekYXBpZM4mU7V0o2ZlZc0bWKJmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgQfbBvInCVNHxC81MgGytSilcKdRN4D8U7RQo0cBfTnuibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWkYXBwbA==",
+		base64.StdEncoding.EncodeToString(txns[3]),
+	)
+
+	// test with arc 59 true
+	txnsByteArray, err = MakeAndSignARC59SendTxn(
+		"SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4",
+		"MKKKFL5JBJTOCEMEZUAJKTWD5FYAI2FOLW5BP5N5YR37ZG5FHLTUYCFC6U",
+		"YIIC6GF4DUJYZTYTZ5UEOAXONUUKZRDFOTV4EKSGD5E7BYE6EE3IVPYEDQ",
+		"6LD3JUWPR72DX5JNGPHH2QEM2IKRA3SXGFSRR4P7TB5JMVPQTIYCXLUMCQ",
+		&amount,
+		&min_balance_requirement,
+		5,
+		643020148,
+		655977010,
+		&suggested_params,
+		true,
+		&algoAmount,
+		sk,
+	)
+	require.NoError(t, err)
+	txns = txnsByteArray.Extract()
+	require.Equal(t, len(txns), 3)
+	require.Equal(
+		t,
+		"gqNzaWfEQFWCZAqrBkIsumkX/ZETn4cq/ECZFyW/658Jhkwu7vmMKE3X7MWYk+uIJIF9+3J9fGvH+slHnjR+vTcqXMzAOwGjdHhuiqNhbXTOAAN7GKNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIOnT3buWnGrbSyyOJnIQQ9K2XCELvgTYUubOZbDoSEJOomx2zgJo+NCjcmN2xCDCEC8YvB0TjM8Tz2hHAu5tKKzEZXTrwipGH0nw4J4hNqNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWjcGF5",
+		base64.StdEncoding.EncodeToString(txns[0]),
+	)
+	require.Equal(
+		t,
+		"gqNzaWfEQP6D1SAZX4981f+ylVf/VUKNcRv6423AVRppPBKDw/AagAm7EyXjM/83iK+suvkA3RHXWf+XuzytIVcUlnPfagKjdHhui6RhYW10CqRhcmN2xCDCEC8YvB0TjM8Tz2hHAu5tKKzEZXTrwipGH0nw4J4hNqNmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIOnT3buWnGrbSyyOJnIQQ9K2XCELvgTYUubOZbDoSEJOomx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpWF4ZmVypHhhaWTOJxlqMg==",
+		base64.StdEncoding.EncodeToString(txns[1]),
+	)
+	require.Equal(
+		t,
+		"gqNzaWfEQLHMQiQreD8rXvu0fJJ64KUIY/RYzDv/07EVEGiuhfyz2nFI6O2U9QS4s4xEGAXS5FwdxfcOf0alZzZS4z7guwSjdHhujaRhcGFhk8QECFMe18QgYpSir6kKZuERhM0AlU7D6XAEaK5duhf1vcR3/JulOufECAAAAAAAAAAUpGFwYXORzicZajKkYXBhdJLEIGKUoq+pCmbhEYTNAJVOw+lwBGiuXboX9b3Ed/ybpTrnxCDyx7TSz4/0O/UtM859QIzSFRBuVzFlGPH/mHqWVfCaMKRhcGJ4kYGhbsQgYpSir6kKZuERhM0AlU7D6XAEaK5duhf1vcR3/JulOuekYXBpZM4mU7V0o2ZlZc0bWKJmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQg6dPdu5acattLLI4mchBD0rZcIQu+BNhS5s5lsOhIQk6ibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWkYXBwbA==",
 		base64.StdEncoding.EncodeToString(txns[2]),
 	)
 
@@ -127,10 +128,10 @@ func TestMakeAndSignARC59ClaimTxn(t *testing.T) {
 
 	// test with opt-in true
 
-	txnsByteArrayOptInTrue, err := MakeAndSignARC59ClaimTxn(
+	generated_txs, err := MakeAndSignARC59ClaimTxn(
 		"SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4",
 		"6LD3JUWPR72DX5JNGPHH2QEM2IKRA3SXGFSRR4P7TB5JMVPQTIYCXLUMCQ",
-		655494101,
+		643020148,
 		655977010,
 		&suggested_params,
 		true,
@@ -138,21 +139,21 @@ func TestMakeAndSignARC59ClaimTxn(t *testing.T) {
 		sk,
 	)
 	require.NoError(t, err)
-	txns_opt_in_true := txnsByteArrayOptInTrue.Extract()
-
+	txs := generated_txs.Extract()
+	require.Equal(t, len(txs), 1)
 	require.Equal(
 		t,
-		"gqNzaWfEQDGOkcKzLGrBcOeZmgxLI4z0VLbkz+1zZ8LPEKleCYmL4IvQS23cefFDxzpaObW/df79rrsiUQgbPfjmqEnCVQijdHhujaRhcGFhksQEv5AuPMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQg8se00s+P9Dv1LTPOfUCM0hUQblcxZRjx/5h6llXwmjCkYXBieJGBoW7EIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpGFwaWTOJxIL1aNmZWXNC7iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHc1uwt20dMbyuv/VyzNDHyhm69fQvuDhfq19k03YxvBomx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpGFwcGw=",
-		base64.StdEncoding.EncodeToString(txns_opt_in_true[0]),
+		"gqNzaWfEQIj+/2PrjZ6UBzM8C4SKcDxx0LZ5W7ks7Y83XgJkRxdGrAajL3q1fbAbE40bxc1s0b+mTaqb+0h1bqbri9bIBQyjdHhujaRhcGFhksQEv5AuPMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQg8se00s+P9Dv1LTPOfUCM0hUQblcxZRjx/5h6llXwmjCkYXBieJGBoW7EIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpGFwaWTOJlO1dKNmZWXNC7iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEID5DmNnDlKg3YPonhwOMQMEL1Anae17u80wk6i8UoFk/omx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpGFwcGw=",
+		base64.StdEncoding.EncodeToString(txs[0]),
 	)
 	require.NoError(t, err)
 
 	// test with opt-in false
 
-	txnsByteArrayOptInFalse, err := MakeAndSignARC59ClaimTxn(
+	generated_txns_2, err := MakeAndSignARC59ClaimTxn(
 		"SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4",
 		"6LD3JUWPR72DX5JNGPHH2QEM2IKRA3SXGFSRR4P7TB5JMVPQTIYCXLUMCQ",
-		655494101,
+		643020148,
 		655977010,
 		&suggested_params,
 		false,
@@ -160,19 +161,55 @@ func TestMakeAndSignARC59ClaimTxn(t *testing.T) {
 		sk,
 	)
 	require.NoError(t, err)
-	txns_opt_in_false := txnsByteArrayOptInFalse.Extract()
+	txs_2 := generated_txns_2.Extract()
+	require.Equal(t, len(txs_2), 2)
 
 	require.Equal(
 		t,
-		"gqNzaWfEQAqRStLhafCrzrJzJQ5LQaRkHW09jT+Z61ZhG6i1HZ1RGaxtLX1wu7xsVxlVbqUvRGuH8jKKrnKAUBjGQpSIkgCjdHhuiqRhcmN2xCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6NmZWXNA+iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHnfsWb5RyTDo2Jl2WK5A8NxnXGZJad9oOK87LeY5p0somx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpWF4ZmVypHhhaWTOJxlqMg==",
-		base64.StdEncoding.EncodeToString(txns_opt_in_false[0]),
+		"gqNzaWfEQEDGFTJf/se2k41PE5BydfzRqKgNd4JRufCme20jlKhTH+z/Sxc2q/9+jS+lMfI+6SgC/GjEEQ6apsa2tLEcEA6jdHhuiaRhcmN2xCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6Jmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgqbROyTlncTEZsLLw33xsoreRE2i2O2cA3NhZOFl5OoeibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWlYXhmZXKkeGFpZM4nGWoy",
+		base64.StdEncoding.EncodeToString(txs_2[0]),
 	)
 	require.Equal(
 		t,
-		"gqNzaWfEQDLs1J4n4YEoG8rtQdfj/yjNFLlBhXotYUpLAgXxC/Ev8CA3ha4+CMga9NkZy/LzlkO9pH+bO5ASaUaSeZUCCgejdHhujaRhcGFhksQEv5AuPMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQg8se00s+P9Dv1LTPOfUCM0hUQblcxZRjx/5h6llXwmjCkYXBieJGBoW7EIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpGFwaWTOJxIL1aNmZWXNC7iiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHnfsWb5RyTDo2Jl2WK5A8NxnXGZJad9oOK87LeY5p0somx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpGFwcGw=",
-		base64.StdEncoding.EncodeToString(txns_opt_in_false[1]),
+		"gqNzaWfEQJVgdG7cF32LMiZzgMu3eaV1ExRKWu3bHz+zuXCSZGAVKREDekesgNOqORoSSGhJaHm68SM4QiUZ6gdonzzagg+jdHhujaRhcGFhksQEv5AuPMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQg8se00s+P9Dv1LTPOfUCM0hUQblcxZRjx/5h6llXwmjCkYXBieJGBoW7EIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpGFwaWTOJlO1dKNmZWXND6CiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIKm0Tsk5Z3ExGbCy8N98bKK3kRNotjtnANzYWThZeTqHomx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpGFwcGw=",
+		base64.StdEncoding.EncodeToString(txs_2[1]),
+	)
+
+	// test with claim true
+
+	generated_txns_3, err := MakeAndSignARC59ClaimTxn(
+		"SENDSCOFWLP5OZVFWWU5BXSRLVVETTU5IVDRTALPQTIZTAK44IF2SJ57P4",
+		"6LD3JUWPR72DX5JNGPHH2QEM2IKRA3SXGFSRR4P7TB5JMVPQTIYCXLUMCQ",
+		643020148,
+		655977010,
+		&suggested_params,
+		false,
+		true,
+		sk,
 	)
 	require.NoError(t, err)
+	txs_3 := generated_txns_3.Extract()
+	require.Equal(t, len(txs_3), 3)
+
+	fmt.Println(base64.StdEncoding.EncodeToString(txs_3[0]))
+	fmt.Println(base64.StdEncoding.EncodeToString(txs_3[1]))
+	fmt.Println(base64.StdEncoding.EncodeToString(txs_3[2]))
+
+	require.Equal(
+		t,
+		"gqNzaWfEQEoLwKPyWIBtOQ5wXZ8WJlQ9/wMD9rixH3V5NwuvFk2v95VPvAJcO77D7yfdXXsK6emBZWJq5RSXNZ9IMb53ygSjdHhui6RhcGFhkcQENi3K16RhcGF0kcQg8se00s+P9Dv1LTPOfUCM0hUQblcxZRjx/5h6llXwmjCkYXBieJGBoW7EIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpGFwaWTOJlO1dKJmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgdjURnaVRpNL/JxD3ExEpJgm6hVcpN5yLr55KcGNk/c+ibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWkYXBwbA==",
+		base64.StdEncoding.EncodeToString(txs_3[0]),
+	)
+	require.Equal(
+		t,
+		"gqNzaWfEQPXWP4OUs/IEpADudMkP8vIjFE3RZxeA2d/9Z64vK5CoojSTa76GRbYZXp0P+E7TA294nJcCaHlibTMU1v5pRg6jdHhuiaRhcmN2xCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6Jmds4CaPToo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgdjURnaVRpNL/JxD3ExEpJgm6hVcpN5yLr55KcGNk/c+ibHbOAmj40KNzbmTEIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpHR5cGWlYXhmZXKkeGFpZM4nGWoy",
+		base64.StdEncoding.EncodeToString(txs_3[1]),
+	)
+	require.Equal(
+		t,
+		"gqNzaWfEQPl0cDSIcbF0hhdocLiPuafwxdTLBYCoBdSCY43mwFG8zLtrYz1Js52KFE5aUVMgMuhQn4a4jDTDkDKaj69J2gKjdHhujaRhcGFhksQEv5AuPMQIAAAAACcZajKkYXBhc5HOJxlqMqRhcGF0kcQg8se00s+P9Dv1LTPOfUCM0hUQblcxZRjx/5h6llXwmjCkYXBieJGBoW7EIJEaOQnFst/XZqW1qdDeUV1qSc6dRUcZgW+E0ZmBXOILpGFwaWTOJlO1dKNmZWXNF3CiZnbOAmj06KNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIHY1EZ2lUaTS/ycQ9xMRKSYJuoVXKTeci6+eSnBjZP3Pomx2zgJo+NCjc25kxCCRGjkJxbLf12altanQ3lFdaknOnUVHGYFvhNGZgVziC6R0eXBlpGFwcGw=",
+		base64.StdEncoding.EncodeToString(txs_3[2]),
+	)
 }
 
 func TestMakeAndSignARC59RejectTxn(t *testing.T) {
