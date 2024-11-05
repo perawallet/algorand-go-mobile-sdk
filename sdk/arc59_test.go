@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"encoding/base64"
-	"fmt"
 	"testing"
 
 	"github.com/algorand/go-algorand-sdk/v2/mnemonic"
@@ -190,10 +189,6 @@ func TestMakeAndSignARC59ClaimTxn(t *testing.T) {
 	require.NoError(t, err)
 	txs_3 := generated_txns_3.Extract()
 	require.Equal(t, len(txs_3), 3)
-
-	fmt.Println(base64.StdEncoding.EncodeToString(txs_3[0]))
-	fmt.Println(base64.StdEncoding.EncodeToString(txs_3[1]))
-	fmt.Println(base64.StdEncoding.EncodeToString(txs_3[2]))
 
 	require.Equal(
 		t,
