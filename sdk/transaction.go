@@ -920,3 +920,39 @@ func MakeOptInAndAssetTransferTxns(
 		return
 	}
 }
+
+
+// Calculate the min balance amount needed by the receiver account
+func GetReceiverMinBalanceFee(
+	receiverAlgoAmount, 
+	receiverMinBalanceAmount *Uint64,
+) (receiverMinBalanceFee int, err error) {
+	const (
+		ASSET_OPT_IN_MBR uint64 = 100000
+		ACCOUNT_MBR uint64 = 100000
+	)
+
+	receiverExtractedAmount, err := receiverAlgoAmount.Extract()
+	if err != nil {
+		return 0, fmt.Errorf("Failed to extract receiverAlgoAmount: %v", err)
+	}
+
+	receiverExtractedMinBalance, err := receiverMinBalanceAmount.Extract()
+	if err != nil {
+		return 0, fmt.Errorf("Failed to extract receiverMinBalanceAmount: %v", err)
+	}
+
+	if receiverExtractedAmount == 0 {
+		return int(ACCOUNT_MBR + ASSET_OPT_IN_MBR), nil
+	}
+
+	requiredAmount := ASSET_OPT_IN_MBR
+	availableAmount := receiverExtractedAmount - receiverExtractedMinBalance
+	extraAlgoAmount := requiredAmount - availableAmount
+
+	if extraAlgoAmount > 0 {
+		return int(extraAlgoAmount), nil
+	}
+
+	return 0, nil
+}
