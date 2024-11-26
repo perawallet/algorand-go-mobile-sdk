@@ -950,7 +950,7 @@ func GetReceiverMinBalanceFee(
 	availableAmount := receiverExtractedAmount - receiverExtractedMinBalance
 	extraAlgoAmount := requiredAmount - availableAmount
 
-	if extraAlgoAmount > 0 {
+	if requiredAmount > availableAmount {
 		return int(extraAlgoAmount), nil
 	}
 
