@@ -1,62 +1,74 @@
 package sdk
 
 import (
-	"encoding/base64"
 	"fmt"
 
 	"github.com/algorand/go-algorand-sdk/v2/encoding/msgpack"
 	"github.com/algorand/go-algorand-sdk/v2/transaction"
 )
 
-// MakeAndSignKeyRegTxnWithFlatFee creates and signs a key registration transaction
-// using a flat fee. It returns the signed transaction bytes and/or an error.
-//
-// Parameters:
-//   - sender: the account address (checksummed, human-readable) for which we register participation.
-//   - fee: the flat fee.
-//   - firstRound, lastRound: first and last rounds in which the transaction is valid.
-//   - note: optional note as []byte.
-//   - genesisID: the network's genesis ID.
-//   - genesisHashB64: base64-encoded genesis hash.
-//   - voteKeyB64: base64-encoded string corresponding to the root participation public key.
-//   - selectionKeyB64: base64-encoded string corresponding to the VRF public key.
-//   - voteFirst, voteLast: the first/last round for which this participation key is valid.
-//   - voteKeyDilution: the dilution for the 2-level participation key.
-//   - sk: the sender's secret key (ed25519.PrivateKey) for signing.
-//
-// Returns:
-//   - signedTxnBytes: The bytes of the signed transaction.
-//   - err: Error, if any occurred.
+
 func MakeKeyRegTxn(
-    sender string,
+    account string,
     note []byte,
-    voteKeyB64, selectionKeyB64 string,
+    voteKey, selectionKey string,
     voteFirst, voteLast, voteKeyDilution *Uint64,
 	suggestedParams *SuggestedParams,
 ) (txn []byte, err error) {
-	internalTxnParams, err := convertSuggestedParams(suggestedParams)
+	paramsConverted, err := convertSuggestedParams(suggestedParams)
 	
-	decodedVoteFirst, _ := voteFirst.Extract()
-	decodedVoteLast, _ := voteLast.Extract()
-	decodedVoteKeyDilution, _ := voteKeyDilution.Extract()
 
-
-
-    voteKey, err := base64.StdEncoding.DecodeString(voteKeyB64)
-
-	selectionKey, err := base64.StdEncoding.DecodeString(selectionKeyB64)
-
-
+	voteFirstDecoded, _ := voteFirst.Extract()
+	voteLastDecoded, _ := voteLast.Extract()
+	voteKeyDilutionDecoded, _ := voteKeyDilution.Extract()
+	
     txnObj, err := transaction.MakeKeyRegTxn(
-        sender,
+        account,
         note,
-		internalTxnParams,
-        string(voteKey),
-        string(selectionKey),
-        decodedVoteFirst,
-        decodedVoteLast,
-        decodedVoteKeyDilution,
+		paramsConverted,
+        voteKey,
+        selectionKey,
+        voteFirstDecoded,
+        voteLastDecoded,
+        voteKeyDilutionDecoded,
     )
+
+    if err != nil {
+        return nil, fmt.Errorf("failed to construct key reg txn: %v", err)
+    }
+
+	txn = msgpack.Encode(&txnObj)
+
+    return txn, nil
+}
+
+
+func MakeKeyRegTxnWithStateProofKey(
+    account string,
+    note []byte,
+	params *SuggestedParams,
+    voteKey, selectionKey, stateProofPK string,
+    voteFirst, voteLast, voteKeyDilution *Uint64,
+	nonpart bool,
+) (txn []byte, err error) {
+	paramsConverted, err := convertSuggestedParams(params)
+	
+	voteFirstDecoded, _ := voteFirst.Extract()
+	voteLastDecoded, _ := voteLast.Extract()
+	voteKeyDilutionDecoded, _ := voteKeyDilution.Extract()
+
+    txnObj, err := transaction.MakeKeyRegTxnWithStateProofKey(
+		account, 
+		note,
+		paramsConverted, 
+		voteKey, 
+		selectionKey, 
+		stateProofPK,
+		voteFirstDecoded, 
+		voteLastDecoded,
+		voteKeyDilutionDecoded, 
+		nonpart,
+	)
 
     if err != nil {
         return nil, fmt.Errorf("failed to construct key reg txn: %v", err)
