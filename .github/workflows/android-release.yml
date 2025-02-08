@@ -1,0 +1,86 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Android Release
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  android:
+    runs-on: macos-latest
+    needs: ['build']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and Extract Android NDK r20b
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r20b-darwin-x86_64.zip
+          unzip android-ndk-r20b-darwin-x86_64.zip -d $HOME
+
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r20b" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-ndk-r20b:$PATH" >> $GITHUB_ENV
+
+      - name: Verify NDK installation using Rosetta
+        run: arch -x86_64 $ANDROID_NDK_HOME/ndk-build --version
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install Go Mobile
+        run: make install-go-mobile
+
+      - name: Build
+        run: make android
+
+      - name: Rename AAR with Tag Version
+        run: |
+          GITHUB_TAG=${GITHUB_TAG} # Extract the version from the tag
+          mv output/AlgoSDK.aar output/go-mobile-algorand-sdk-${GITHUB_TAG}.aar
+          echo "Renamed AAR to go-mobile-algorand-sdk-${GITHUB_TAG}.aar"
+        env:
+          GITHUB_TAG: ${{ github.ref_name }}
+
+      - name: Archive Build Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlgoSDK-${{ github.ref_name }}.aar
+          path: output/go-mobile-algorand-sdk-${{ github.ref_name }}.aar
+
+      - name: Upload AAR to Maven Central
+        env:
+          GITHUB_TAG: ${{ github.ref_name }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        run: |
+          GITHUB_TAG=${GITHUB_TAG}
+          VERSION=${GITHUB_TAG#v}  # Remove the leading 'v'
+          ./gradlew publish \
+            -PossrhUsername=$SONATYPE_USERNAME \
+            -PossrhPassword=$SONATYPE_PASSWORD \
+            -PartifactId=go-mobile-algorand-sdk \
+            -PgroupId=io.github.perawallet \
+            -Pversion=VERSION \
+            -Pfile=output/go-mobile-algorand-sdk-${GITHUB_TAG}.aar
