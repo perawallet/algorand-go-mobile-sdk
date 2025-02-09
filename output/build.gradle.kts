@@ -1,8 +1,11 @@
+import java.util.Base64
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("maven-publish")
     id("signing")
+    id("tech.yanand.maven-central-publish") version "1.2.0"
 }
 
 android {
@@ -52,14 +55,45 @@ afterEvaluate {
                 setupPom("PeraWalletConnect")
             }
         }
-    }
 
-    signing {
-        val signingKey = System.getenv("GPG_PRIVATE_KEY") ?: ""
-        val signingPassword = System.getenv("GPG_PASSPHRASE") ?: ""
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications)
+        repositories {
+            maven {
+                name = "Local"
+                url = uri(layout.buildDirectory.dir("repos/bundles").get().asFile.toURI())
+            }
+        }
     }
+}
+
+signing {
+    // About GPG signing, please refer to https://central.sonatype.org/publish/requirements/gpg/
+    val signingKey = System.getenv("GPG_PRIVATE_KEY") ?: ""
+    val signingPassword = System.getenv("GPG_PASSPHRASE") ?: ""
+    useInMemoryPgpKeys(signingKey, signingPassword)
+    sign(publishing.publications)
+}
+
+val username = System.getenv("OSSRH_USERNAME") ?: ""
+val password = System.getenv("OSSRH_PASSWORD") ?: ""
+
+mavenCentral {
+    repoDir = layout.buildDirectory.dir("repos/bundles")
+    // Token for Publisher API calls obtained from Sonatype official,
+    // it should be Base64 encoded of "username:password".
+    authToken = Base64.getEncoder().encodeToString("$username:$password".toByteArray())
+    // Whether the upload should be automatically published or not. Use 'USER_MANAGED' if you wish to do this manually.
+    // This property is optional and defaults to 'AUTOMATIC'.
+    publishingType = "USER_MANAGED"
+    // Max wait time for status API to get 'PUBLISHING' or 'PUBLISHED' status when the publishing type is 'AUTOMATIC',
+    // or additionally 'VALIDATED' when the publishing type is 'USER_MANAGED'.
+    // This property is optional and defaults to 60 seconds.
+    maxWait = 500
+}
+
+tasks.register("publishAllToMavenLocal") {
+    dependsOn("publishAlgoSDKReleasePublicationToMavenLocal")
+    dependsOn("publishPeraCompactDecimalFormatReleasePublicationToMavenLocal")
+    dependsOn("publishWalletConnectReleasePublicationToMavenLocal")
 }
 
 // Helper function to configure POM metadata
@@ -92,10 +126,4 @@ fun MavenPublication.setupPom(libName: String) {
             this.url.set("https://github.com/perawallet/algorand-go-mobile-sdk.git")
         }
     }
-}
-
-tasks.register("publishAllToMavenLocal") {
-    dependsOn("publishAlgoSDKReleasePublicationToMavenLocal")
-    dependsOn("publishPeraCompactDecimalFormatReleasePublicationToMavenLocal")
-    dependsOn("publishWalletConnectReleasePublicationToMavenLocal")
 }

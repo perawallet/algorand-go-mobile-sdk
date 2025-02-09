@@ -114,11 +114,12 @@ jobs:
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./gradlew publishToMavenLocal
+        run: ./gradlew publish
 
       - name: Upload to Maven Central
-        run: ./gradlew publishAllPublicationsToSonatypeRepository
         env:
           SONATYPE_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        run: ./gradlew publishToMavenCentralPortal
+
 
