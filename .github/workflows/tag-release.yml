@@ -115,7 +115,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          VERSION_TAG=${GITHUB_TAG#v}  # Remove the leading 'v'
+          export VERSION_TAG=${GITHUB_TAG#v}  # Remove the leading 'v'
           ./gradlew publish
 
       - name: Upload to Maven Central

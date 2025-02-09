@@ -83,7 +83,7 @@ mavenCentral {
     authToken = Base64.getEncoder().encodeToString("$username:$password".toByteArray())
     // Whether the upload should be automatically published or not. Use 'USER_MANAGED' if you wish to do this manually.
     // This property is optional and defaults to 'AUTOMATIC'.
-    publishingType = "USER_MANAGED"
+    publishingType = "AUTOMATIC"
     // Max wait time for status API to get 'PUBLISHING' or 'PUBLISHED' status when the publishing type is 'AUTOMATIC',
     // or additionally 'VALIDATED' when the publishing type is 'USER_MANAGED'.
     // This property is optional and defaults to 60 seconds.
