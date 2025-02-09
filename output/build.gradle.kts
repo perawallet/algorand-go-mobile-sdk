@@ -55,10 +55,9 @@ afterEvaluate {
     }
 
     signing {
-        useInMemoryPgpKeys(
-            System.getenv("GPG_PRIVATE_KEY"),
-            System.getenv("GPG_KEY_PASSWORD")
-        )
+        useGpgCmd()
+        useGpgKeyring(file("secring.gpg"))
+        useGpgPassphrase(System.getenv("GPG_KEY_PASSWORD"))
         sign(publishing.publications)
     }
 }
