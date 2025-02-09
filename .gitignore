@@ -23,9 +23,6 @@ go.work
 # asdf
 .tool-versions
 
-# Build outputs
-output/
-
 # Gradle files
 .gradle/
 
