@@ -89,7 +89,6 @@ jobs:
       - name: Rename artifact with tag version
         run: |
           GITHUB_TAG=${GITHUB_TAG} # Extract the version from the tag
-          VERSION_TAG=${GITHUB_TAG#v}  # Remove the leading 'v'
           cp output/AlgoSDK.aar output/go-mobile-algorand-sdk-${GITHUB_TAG}.aar
           echo "Renamed AAR to go-mobile-algorand-sdk-${GITHUB_TAG}.aar"
         env:
@@ -112,9 +111,12 @@ jobs:
 
       - name: Build and Sign AAR Files
         env:
+          GITHUB_TAG: ${{ github.ref_name }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./gradlew publish
+        run: |
+          VERSION_TAG=${{ github.ref_name#v }}  # Remove the leading 'v'
+          ./gradlew publish
 
       - name: Upload to Maven Central
         env:
