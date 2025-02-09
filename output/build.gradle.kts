@@ -17,6 +17,7 @@ android {
 
 afterEvaluate {
     val versionTag = System.getenv("VERSION_TAG") ?: "0.1.0"
+    val gpgPassphrase = System.getenv("GPG_KEY_PASSWORD") ?: ""
     publishing {
         publications {
             // Publication for AlgoSDK
@@ -56,8 +57,8 @@ afterEvaluate {
 
     signing {
         useGpgCmd()
-        useGpgKeyring(file("secring.gpg"))
-        useGpgPassphrase(System.getenv("GPG_KEY_PASSWORD"))
+        useGpgKeyring(file("../secring.gpg"))
+        useGpgPassphrase(gpgPassphrase)
         sign(publishing.publications)
     }
 }
