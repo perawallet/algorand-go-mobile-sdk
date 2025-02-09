@@ -107,17 +107,13 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
-      - name: Decode and Import GPG Key
-        run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode > secring.gpg
-          gpg --batch --import secring.gpg
-        env:
-          GPG_KEY_PASSWORD: ${{ secrets.GPG_KEY_PASSWORD }}
-
       - name: Set up Gradle
         uses: gradle/gradle-build-action@v2
 
       - name: Build and Sign AAR Files
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: ./gradlew publishToMavenLocal
 
       - name: Upload to Maven Central
