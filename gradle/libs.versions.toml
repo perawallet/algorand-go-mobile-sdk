@@ -1,0 +1,20 @@
+[versions]
+agp = "8.7.2"
+android-library = "8.2.2"
+android-compileSdk = "34"
+android-minSdk = "26"
+android-namespace = "io.gihub.perawallet"
+android-targetSdk = "34"
+android-versionCode = "124"
+android-versionName = "5.202502.0"
+kotlin = "2.0.21"
+
+
+[libraries]
+agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+
+
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "android-library" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

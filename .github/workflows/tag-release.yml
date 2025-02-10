@@ -1,0 +1,127 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Tag Release
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  ios:
+    runs-on: macos-latest
+    needs: [ 'test' ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install Go Mobile
+        run: make install-go-mobile
+
+      - name: Build
+        run: make ios
+
+      - name: Rename artifact with tag version
+        run: |
+          GITHUB_TAG=${GITHUB_TAG} # Extract the version from the tag
+          mv output/AlgoSDK.xcframework output/go-mobile-algorand-sdk-${GITHUB_TAG}.xcframework
+          echo "Renamed artifact to go-mobile-algorand-sdk-${GITHUB_TAG}.xcframework"
+        env:
+          GITHUB_TAG: ${{ github.ref_name }}
+
+      - name: Archive Build Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-mobile-algorand-sdk-${{ github.ref_name }}.xcframework
+          path: output/go-mobile-algorand-sdk-${{ github.ref_name }}.xcframework
+
+  android:
+    runs-on: macos-latest
+    needs: ['test']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and Extract Android NDK r20b
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r20b-darwin-x86_64.zip
+          unzip android-ndk-r20b-darwin-x86_64.zip -d $HOME
+
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r20b" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-ndk-r20b:$PATH" >> $GITHUB_ENV
+
+      - name: Verify NDK installation using Rosetta
+        run: arch -x86_64 $ANDROID_NDK_HOME/ndk-build --version
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install Go Mobile
+        run: make install-go-mobile
+
+      - name: Build
+        run: make android
+
+      - name: Rename artifact with tag version
+        run: |
+          GITHUB_TAG=${GITHUB_TAG} # Extract the version from the tag
+          cp output/AlgoSDK.aar output/go-mobile-algorand-sdk-${GITHUB_TAG}.aar
+          echo "Renamed AAR to go-mobile-algorand-sdk-${GITHUB_TAG}.aar"
+        env:
+          GITHUB_TAG: ${{ github.ref_name }}
+
+      - name: Archive Build Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-mobile-algorand-sdk-${{ github.ref_name }}.aar
+          path: output/go-mobile-algorand-sdk-${{ github.ref_name }}.aar
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Build and Sign AAR Files
+        env:
+          GITHUB_TAG: ${{ github.ref_name }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          export VERSION_TAG=${GITHUB_TAG#v}  # Remove the leading 'v'
+          ./gradlew publish
+
+      - name: Upload to Maven Central
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        run: ./gradlew publishToMavenCentralPortal
+
+

@@ -1,0 +1,85 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Pull-Request
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
+
+  ios:
+    runs-on: macos-latest
+    needs: ['test']
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Install Go Mobile
+      run: make install-go-mobile
+
+    - name: Build
+      run: make ios
+
+    - name: Archive Build Output
+      uses: actions/upload-artifact@v4
+      with:
+        name: AlgoSDK.xcframework
+        path: output/AlgoSDK.xcframework
+
+  android:
+    runs-on: macos-latest
+    needs: ['test']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and Extract Android NDK r20b
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r20b-darwin-x86_64.zip
+          unzip android-ndk-r20b-darwin-x86_64.zip -d $HOME
+
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r20b" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-ndk-r20b:$PATH" >> $GITHUB_ENV
+
+      - name: Verify NDK installation using Rosetta
+        run: arch -x86_64 $ANDROID_NDK_HOME/ndk-build --version
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install Go Mobile
+        run: make install-go-mobile
+
+      - name: Build
+        run: make android
+
+      - name: Archive Build Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlgoSDK.aar
+          path: output/AlgoSDK.aar
