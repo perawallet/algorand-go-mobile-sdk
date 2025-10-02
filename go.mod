@@ -3,7 +3,7 @@ module github.com/algorand/go-mobile-algorand-sdk/v2
 go 1.24.0
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.11.1
+	github.com/algorand/go-algorand-sdk/v2 v2.6.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tyler-smith/go-bip39 v1.1.0
 	golang.org/x/crypto v0.42.0
