@@ -43,9 +43,9 @@ clean:  ## Remove build outputs and caches
 
 # ==== Tool Installation ====
 
-install-go-mobile:  ## Install gomobile and gobind (Go 1.23 compatible)
+install-go-mobile:  ## Install gomobile 
 	$(GO) install golang.org/x/mobile/cmd/gomobile@v0.0.0-20230531173138-3c911d8e3eda
-	$(GO) install golang.org/x/mobile/cmd/gobind@v0.0.0-20230531173138-3c911d8e3eda
+	$(GO) get golang.org/x/mobile/cmd/gomobile
 	$(GOMOBILE) init
 	$(GOMOBILE) version
 
