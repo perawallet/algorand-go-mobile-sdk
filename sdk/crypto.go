@@ -1,14 +1,14 @@
 package sdk
 
 import (
+	"bytes"
 	"fmt"
-
-	"golang.org/x/crypto/ed25519"
 
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
 	"github.com/algorand/go-algorand-sdk/v2/encoding/msgpack"
 	"github.com/algorand/go-algorand-sdk/v2/transaction"
 	"github.com/algorand/go-algorand-sdk/v2/types"
+	"golang.org/x/crypto/ed25519"
 )
 
 func GenerateSK() []byte {
@@ -310,7 +310,6 @@ func FindAndVerifyTxnGroups(txns *BytesArray) (groups *Int64Array, err error) {
 	return
 }
 
-
 // SignBytes signs the bytes and returns the signature
 func SignBytes(sk []byte, bytesToSign []byte) (signature []byte, err error) {
 	if len(sk) != ed25519.PrivateKeySize {
@@ -320,5 +319,19 @@ func SignBytes(sk []byte, bytesToSign []byte) (signature []byte, err error) {
 
 	// sign the bytes
 	signature, err = crypto.SignBytes(sk, bytesToSign)
+	return
+}
+
+var txidPrefix = []byte("TX")
+
+func RawTransactionBytesToSign(encodedTxn []byte) (result []byte, err error) {
+	var tx types.Transaction
+	err = msgpack.Decode(encodedTxn, &tx)
+	if err != nil {
+		return
+	}
+	encodedTx := msgpack.Encode(tx)
+	msgParts := [][]byte{txidPrefix, encodedTx}
+	result = bytes.Join(msgParts, nil)
 	return
 }

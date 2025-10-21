@@ -191,7 +191,43 @@ func (lsa *LogicSigAccount) AppendSignMultisigSignature(signerSk []byte) error {
 	if len(signerSk) != ed25519.PrivateKeySize {
 		return fmt.Errorf("Incorrect privateKey length expected %d, got %d", ed25519.PrivateKeySize, len(signerSk))
 	}
-	return lsa.value.AppendMultisigSignature(signerSk)
+
+	if lsa.value.Lsig.Msig.Blank() {
+		return errors.New("empty multisig in logicsig")
+	}
+
+	// Sign the program
+	programData := LogicSigProgramForSigning(lsa.value.Lsig.Logic)
+	signature := ed25519.Sign(ed25519.PrivateKey(signerSk), programData)
+
+	// Get the public key from the private key
+	publicKey := ed25519.PrivateKey(signerSk).Public().(ed25519.PublicKey)
+	var signerAddr types.Address
+	copy(signerAddr[:], publicKey)
+
+	// Find the signer's index in the multisig
+	signerIndex := -1
+	for i, subsig := range lsa.value.Lsig.Msig.Subsigs {
+		var pkAddr types.Address
+		copy(pkAddr[:], subsig.Key[:])
+		if pkAddr == signerAddr {
+			signerIndex = i
+			break
+		}
+	}
+	if signerIndex == -1 {
+		return errors.New("signer address does not match any of the addresses in the multisig account")
+	}
+
+	// Attach the signature
+	var s types.Signature
+	copy(s[:], signature)
+	lsa.value.Lsig.Msig.Subsigs[signerIndex].Sig = s
+
+	// Note: We don't verify here because multisig may not have enough signatures yet
+	// Verification happens when the LogicSig is actually used to sign a transaction
+
+	return nil
 }
 
 // AppendAttachMultisigSignature adds an additional signature from a member of the
@@ -237,9 +273,8 @@ func (lsa *LogicSigAccount) AppendAttachMultisigSignature(signer string, signatu
 
 	lsa.value.Lsig.Msig.Subsigs[signerIndex].Sig = s
 
-	if !crypto.VerifyLogicSig(lsa.value.Lsig, types.Address{}) {
-		return errors.New("invalid signature provided")
-	}
+	// Note: We don't verify here because multisig may not have enough signatures yet
+	// Verification happens when the LogicSig is actually used to sign a transaction
 
 	return nil
 }

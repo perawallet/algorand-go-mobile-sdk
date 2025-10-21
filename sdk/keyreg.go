@@ -7,74 +7,99 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/transaction"
 )
 
-
 func MakeKeyRegTxn(
-    account string,
-    note []byte,
-    voteKey, selectionKey string,
-    voteFirst, voteLast, voteKeyDilution *Uint64,
+	account string,
+	note []byte,
+	voteKey, selectionKey string,
+	voteFirst, voteLast, voteKeyDilution *Uint64,
 	suggestedParams *SuggestedParams,
 ) (txn []byte, err error) {
 	paramsConverted, err := convertSuggestedParams(suggestedParams)
-	
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert suggested params: %v", err)
+	}
 
-	voteFirstDecoded, _ := voteFirst.Extract()
-	voteLastDecoded, _ := voteLast.Extract()
-	voteKeyDilutionDecoded, _ := voteKeyDilution.Extract()
-	
-    txnObj, err := transaction.MakeKeyRegTxn(
-        account,
-        note,
+	voteFirstDecoded, err := voteFirst.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract voteFirst: %v", err)
+	}
+
+	voteLastDecoded, err := voteLast.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract voteLast: %v", err)
+	}
+
+	voteKeyDilutionDecoded, err := voteKeyDilution.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract voteKeyDilution: %v", err)
+	}
+
+	txnObj, err := transaction.MakeKeyRegTxn(
+		account,
+		note,
 		paramsConverted,
-        voteKey,
-        selectionKey,
-        voteFirstDecoded,
-        voteLastDecoded,
-        voteKeyDilutionDecoded,
-    )
+		voteKey,
+		selectionKey,
+		voteFirstDecoded,
+		voteLastDecoded,
+		voteKeyDilutionDecoded,
+	)
 
-    if err != nil {
-        return nil, fmt.Errorf("failed to construct key reg txn: %v", err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct key reg txn: %v", err)
+	}
 
 	txn = msgpack.Encode(&txnObj)
 
-    return txn, nil
+	return txn, nil
 }
 
-
 func MakeKeyRegTxnWithStateProofKey(
-    account string,
-    note []byte,
+	account string,
+	note []byte,
 	params *SuggestedParams,
-    voteKey, selectionKey, stateProofPK string,
-    voteFirst, voteLast, voteKeyDilution *Uint64,
+	voteKey, selectionKey, stateProofPK string,
+	voteFirst, voteLast, voteKeyDilution *Uint64,
 	nonpart bool,
 ) (txn []byte, err error) {
 	paramsConverted, err := convertSuggestedParams(params)
-	
-	voteFirstDecoded, _ := voteFirst.Extract()
-	voteLastDecoded, _ := voteLast.Extract()
-	voteKeyDilutionDecoded, _ := voteKeyDilution.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert suggested params: %v", err)
+	}
 
-    txnObj, err := transaction.MakeKeyRegTxnWithStateProofKey(
-		account, 
+	voteFirstDecoded, err := voteFirst.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract voteFirst: %v", err)
+	}
+
+	voteLastDecoded, err := voteLast.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract voteLast: %v", err)
+	}
+
+	voteKeyDilutionDecoded, err := voteKeyDilution.Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract voteKeyDilution: %v", err)
+	}
+
+	txnObj, err := transaction.MakeKeyRegTxnWithStateProofKey(
+		account,
 		note,
-		paramsConverted, 
-		voteKey, 
-		selectionKey, 
+		paramsConverted,
+		voteKey,
+		selectionKey,
 		stateProofPK,
-		voteFirstDecoded, 
+		voteFirstDecoded,
 		voteLastDecoded,
-		voteKeyDilutionDecoded, 
+		voteKeyDilutionDecoded,
 		nonpart,
 	)
 
-    if err != nil {
-        return nil, fmt.Errorf("failed to construct key reg txn: %v", err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct key reg txn: %v", err)
+	}
 
 	txn = msgpack.Encode(&txnObj)
 
-    return txn, nil
+	return txn, nil
 }
