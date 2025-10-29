@@ -1,20 +1,17 @@
 [versions]
-agp = "8.7.2"
-android-library = "8.2.2"
-android-compileSdk = "34"
+android-library = "8.13.0"
+android-compileSdk = "36"
 android-minSdk = "26"
 android-namespace = "io.gihub.perawallet"
-android-targetSdk = "34"
+android-targetSdk = "36"
 android-versionCode = "124"
 android-versionName = "5.202502.0"
-kotlin = "2.0.21"
-
-
-[libraries]
-agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
-
+kotlin = "2.1.0"
+nmcp = "1.2.0"
 
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "android-library" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+nmcp = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcp" }

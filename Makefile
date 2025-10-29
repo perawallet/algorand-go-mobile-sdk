@@ -18,7 +18,7 @@ GOMODCACHE := $(shell $(GO) env GOMODCACHE)
 GOMOBILE := $(BIN)/gomobile
 
 # Build settings
-ANDROID_ABIS := android/arm64,android/amd64
+ANDROID_ABIS := android
 ANDROID_API := 28
 IOS_VERSION := 12.0
 LD16K := -linkmode=external -extldflags "-Wl,-z,common-page-size=16384 -Wl,-z,max-page-size=16384"
@@ -43,7 +43,7 @@ clean:  ## Remove build outputs and caches
 
 # ==== Tool Installation ====
 
-install-go-mobile:  ## Install gomobile 
+install-go-mobile:  ## Install gomobile
 	$(GO) install golang.org/x/mobile/cmd/gomobile@v0.0.0-20230531173138-3c911d8e3eda
 	$(GO) get golang.org/x/mobile/cmd/gomobile
 	$(GOMOBILE) init
@@ -58,7 +58,7 @@ android:  ## Build Android AAR
 	  -target=$(ANDROID_ABIS) \
 	  -androidapi $(ANDROID_API) \
 	  -o=$(OUTPUT_DIR)/algosdk.aar \
-	  -javapkg=com.algorand.algosdk \
+	  -javapkg=app.perawallet.gomobilesdk \
 	  -ldflags='$(LD16K)' \
 	  $(PKG)
 

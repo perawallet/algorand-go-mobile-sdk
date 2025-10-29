@@ -44,7 +44,7 @@ jobs:
 
       - name: Rename artifact with tag version
         run: |
-          GITHUB_TAG=${GITHUB_TAG} # Extract the version from the tag
+          GITHUB_TAG=${{ github.ref_name }}
           mv output/AlgoSDK.xcframework output/go-mobile-algorand-sdk-${GITHUB_TAG}.xcframework
           echo "Renamed artifact to go-mobile-algorand-sdk-${GITHUB_TAG}.xcframework"
         env:
@@ -88,11 +88,9 @@ jobs:
 
       - name: Rename artifact with tag version
         run: |
-          GITHUB_TAG=${GITHUB_TAG} # Extract the version from the tag
-          cp output/AlgoSDK.aar output/go-mobile-algorand-sdk-${GITHUB_TAG}.aar
+          GITHUB_TAG=${{ github.ref_name }}
+          cp output/algosdk.aar output/go-mobile-algorand-sdk-${GITHUB_TAG}.aar
           echo "Renamed AAR to go-mobile-algorand-sdk-${GITHUB_TAG}.aar"
-        env:
-          GITHUB_TAG: ${{ github.ref_name }}
 
       - name: Archive Build Output
         uses: actions/upload-artifact@v4
@@ -109,19 +107,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/gradle-build-action@v2
 
-      - name: Build and Sign AAR Files
+      - name: Publish to Maven Central (NMCP)
         env:
-          GITHUB_TAG: ${{ github.ref_name }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
         run: |
-          export VERSION_TAG=${GITHUB_TAG#v}  # Remove the leading 'v'
-          ./gradlew publish
-
-      - name: Upload to Maven Central
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-        run: ./gradlew publishToMavenCentralPortal
-
-
+          ./gradlew --no-daemon clean publishAggregationToCentralPortal --stacktrace
