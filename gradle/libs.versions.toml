@@ -7,9 +7,11 @@ android-targetSdk = "36"
 android-versionCode = "124"
 android-versionName = "5.202502.0"
 kotlin = "2.1.0"
+nmcp = "1.2.0"
 
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "android-library" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+mavenPublish = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcp" }

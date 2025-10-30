@@ -2,7 +2,9 @@ plugins {
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.jetbrains.kotlin.jvm)
+    alias(libs.plugins.mavenPublish)
     id("maven-publish")
+    id("signing")
     `java-library`
 }
 
@@ -52,8 +54,23 @@ publishing {
             }
         }
     }
+}
 
-    repositories {
-        mavenLocal()
+signing {
+    val signingKey: String? = System.getenv("GPG_PRIVATE_KEY")
+    val signingPassphrase: String? = System.getenv("GPG_PRIVATE_KEY_PASSWORD")
+    if (signingKey != null && signingPassphrase != null) {
+        useInMemoryPgpKeys(signingKey, signingPassphrase)
+        sign(publishing.publications["release"])
     }
+}
+
+nmcpAggregation {
+    centralPortal {
+        username = System.getenv("CENTRAL_PORTAL_USERNAME")
+        password = System.getenv("CENTRAL_PORTAL_PASSWORD")
+        publishingType = "AUTOMATIC"
+    }
+
+    publishAllProjectsProbablyBreakingProjectIsolation()
 }
