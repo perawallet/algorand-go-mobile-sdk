@@ -58,7 +58,7 @@ android:  ## Build Android AAR
 	  -target=$(ANDROID_ABIS) \
 	  -androidapi $(ANDROID_API) \
 	  -o=$(OUTPUT_DIR)/algosdk.aar \
-	  -javapkg=com.algorand.algosdk \
+	  -javapkg=app.perawallet.gomobilesdk \
 	  -ldflags='$(LD16K)' \
 	  $(PKG)
 

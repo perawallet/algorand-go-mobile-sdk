@@ -14,7 +14,7 @@ allprojects {
     }
 }
 
-group = "com.algorand.algosdk"
+group = "app.perawallet.gomobilesdk"
 version = "1.0.0"
 
 publishing {
