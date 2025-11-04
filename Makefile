@@ -44,7 +44,7 @@ clean:  ## Remove build outputs and caches
 # ==== Tool Installation ====
 
 install-go-mobile:  ## Install gomobile
-	$(GO) install golang.org/x/mobile/cmd/gomobile@v0.0.0-20230531173138-3c911d8e3eda
+	$(GO) install golang.org/x/mobile/cmd/gomobile@v0.0.0-20251009145931-8baca8bf4eeb
 	$(GO) get golang.org/x/mobile/cmd/gomobile
 	$(GOMOBILE) init
 	$(GOMOBILE) version
@@ -61,6 +61,18 @@ android:  ## Build Android AAR
 	  -javapkg=app.perawallet.gomobilesdk \
 	  -ldflags='$(LD16K)' \
 	  $(PKG)
+
+android-lite: ## Build Android AAR (optimized)
+	mkdir -p $(OUTPUT_DIR)
+	$(GOMOBILE) bind \
+	  -v -trimpath \
+	  -target=android/arm64 \
+	  -androidapi $(ANDROID_API) \
+	  -o=$(OUTPUT_DIR)/algosdk.aar \
+	  -javapkg=app.perawallet.gomobilesdk \
+	  -ldflags='-s -w -linkmode=external -extldflags "-Wl,-z,common-page-size=16384 -Wl,-z,max-page-size=16384"' \
+	  $(PKG)
+	find $(OUTPUT_DIR) -name "libgojni.so" -exec strip -x {} \;
 
 ios:  ## Build iOS XCFramework
 	mkdir -p $(OUTPUT_DIR)
