@@ -15,8 +15,8 @@ allprojects {
     }
 }
 
-group = "app.perawallet.gomobilesdk"
-version = "1.0.4"
+group = "app.perawallet"
+version = "1.0.5"
 
 publishing {
     publications {
