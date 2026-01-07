@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/algorand/go-algorand-sdk/v2/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -94,4 +95,115 @@ func TestMakeApplicationCreateTx(t *testing.T) {
 
 	expectedEncodedTx := mustDecodeB64(t, "3gARpGFwYWGSxAMxMjPEAzQ1NqRhcGFwxAUBIAEBIqRhcGFzkQqkYXBhdJHEIOfw+E0GgR358xyNh4sRVfRnHVGhhcIAkIZn9ElYcGihpGFwYniTgaFuxAhib3hfbmFtZYKhaQGhbsQIYm94X25hbWWCoWkBoW7ECWJveF9uYW1lMqRhcGVwAqRhcGZhkQqkYXBnc4KjbmJzAaNudWkBpGFwbHOCo25icwGjbnVpAaRhcHN1xAUBIAEBIqNmZWXNA+iiZnbOAB97IaNnZW6rZGV2bmV0LXYxLjCiZ2jEILAtz+3tknW6iiStLW4gnSvbXUqW3ul3ghinaDc5pY9Bomx2zgAffwmkbm90ZcQI8xMCTuLQ812kdHlwZaRhcHBs")
 	require.Equal(t, expectedEncodedTx, encodedTx)
+}
+
+func TestMakeOptInAndAssetTransferTxns_SenderFundsReceiver(t *testing.T) {
+	t.Parallel()
+
+	sender := "47YPQTIGQEO7T4Y4RWDYWEKV6RTR2UNBQXBABEEGM72ESWDQNCQ52OPASU"
+	receiver := "PNWOET7LLOWMBMLE4KOCELCX6X3D3Q4H2Q4QJASYIEOF7YIPPQBG3YQ5YI"
+	assetID := int64(12345)
+
+	params := SuggestedParams{
+		Fee:             1000,
+		FlatFee:         true,
+		FirstRoundValid: 1000,
+		LastRoundValid:  2000,
+		GenesisID:       "testnet-v1.0",
+		GenesisHash:     mustDecodeB64(t, "SGO1GKSzyE7IEPXYM7HGOrJ4WByY7gGcHMrIpCz44YI="),
+	}
+
+	senderAlgoAmount := MakeUint64(10_000_000)
+	senderMinBalance := MakeUint64(100_000)
+
+	receiverAlgoAmount := MakeUint64(0)
+	receiverMinBalance := MakeUint64(0)
+
+	transferAmount := MakeUint64(500)
+
+	txns, err := MakeOptInAndAssetTransferTxns(
+		sender,
+		receiver,
+		&transferAmount,
+		&senderAlgoAmount,
+		&senderMinBalance,
+		&receiverAlgoAmount,
+		&receiverMinBalance,
+		nil,
+		"",
+		assetID,
+		&params,
+	)
+
+	require.NoError(t, err, "Should not fail if sender has enough ALGO to fund receiver")
+	require.NotNil(t, txns)
+	require.Equal(t, 3, len(txns.signerItems), "Should have generated 3 transactions")
+}
+
+func TestMakeOptInAndAssetTransferTxns_InsufficientSenderFunds(t *testing.T) {
+	t.Parallel()
+
+	sender := "47YPQTIGQEO7T4Y4RWDYWEKV6RTR2UNBQXBABEEGM72ESWDQNCQ52OPASU"
+	receiver := "PNWOET7LLOWMBMLE4KOCELCX6X3D3Q4H2Q4QJASYIEOF7YIPPQBG3YQ5YI"
+
+	senderAlgoAmount := MakeUint64(100_000)
+	senderMinBalance := MakeUint64(100_000)
+
+	receiverAlgoAmount := MakeUint64(0)
+	receiverMinBalance := MakeUint64(0)
+
+	params := SuggestedParams{Fee: 1000, FlatFee: true}
+	transferAmount := MakeUint64(500)
+
+	_, err := MakeOptInAndAssetTransferTxns(
+		sender, receiver, &transferAmount,
+		&senderAlgoAmount, &senderMinBalance,
+		&receiverAlgoAmount, &receiverMinBalance,
+		nil, "", 12345, &params,
+	)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "sender does not have enough algo")
+}
+func TestMakeOptInAndAssetTransferTxns_ReceiverIsWhaleButNotOptedIn(t *testing.T) {
+	t.Parallel()
+
+	sender := "47YPQTIGQEO7T4Y4RWDYWEKV6RTR2UNBQXBABEEGM72ESWDQNCQ52OPASU"
+	receiver := "PNWOET7LLOWMBMLE4KOCELCX6X3D3Q4H2Q4QJASYIEOF7YIPPQBG3YQ5YI"
+
+	receiverTotalBalance := MakeUint64(1_000_000_000)
+	receiverMinBalance := MakeUint64(1_000_000_000)
+
+	senderTotalBalance := MakeUint64(50_000_000)
+	senderMinBalance := MakeUint64(100_000)
+
+	params := SuggestedParams{
+		Fee:             1000,
+		FlatFee:         true,
+		FirstRoundValid: 1000,
+		LastRoundValid:  2000,
+		GenesisID:       "testnet-v1.0",
+		GenesisHash:     mustDecodeB64(t, "SGO1GKSzyE7IEPXYM7HGOrJ4WByY7gGcHMrIpCz44YI="),
+	}
+
+	transferAmount := MakeUint64(1)
+	assetID := int64(99)
+
+	txns, err := MakeOptInAndAssetTransferTxns(
+		sender,
+		receiver,
+		&transferAmount,
+		&senderTotalBalance,
+		&senderMinBalance,
+		&receiverTotalBalance,
+		&receiverMinBalance,
+		nil,
+		"",
+		assetID,
+		&params,
+	)
+
+	require.NoError(t, err, "Sender should be able to fund the whale's MBR gap")
+	require.NotNil(t, txns)
+	require.Equal(t, 3, len(txns.signerItems), "Should produce 3 txns (Funding, Opt-in, Transfer)")
 }

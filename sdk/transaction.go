@@ -839,7 +839,7 @@ func MakeOptInAndAssetTransferTxns(
 			}
 		}
 
-		if senderExtractedAmountInt64-senderExtractedMinBalanceInt64 < receiverExtractedAmountInt64+FLAT_FEE+FLAT_FEE {
+		if senderExtractedAmountInt64-senderExtractedMinBalanceInt64 < receiverExtraAlgoAmount+FLAT_FEE+FLAT_FEE {
 			err = fmt.Errorf("sender does not have enough algo to cover recivers needs")
 			return
 		}
@@ -921,15 +921,14 @@ func MakeOptInAndAssetTransferTxns(
 	}
 }
 
-
 // Calculate the min balance amount needed by the receiver account
 func GetReceiverMinBalanceFee(
-	receiverAlgoAmount, 
+	receiverAlgoAmount,
 	receiverMinBalanceAmount *Uint64,
 ) (receiverMinBalanceFee int, err error) {
 	const (
 		ASSET_OPT_IN_MBR uint64 = 100000
-		ACCOUNT_MBR uint64 = 100000
+		ACCOUNT_MBR      uint64 = 100000
 	)
 
 	receiverExtractedAmount, err := receiverAlgoAmount.Extract()
