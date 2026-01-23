@@ -322,6 +322,31 @@ func SignBytes(sk []byte, bytesToSign []byte) (signature []byte, err error) {
 	return
 }
 
+// SignTransactionReturnSignature accepts a private key and a transaction, signs the transaction,
+// and returns only the 64-byte ed25519 signature (not the full signed transaction).
+// This is useful for joint account signing where signatures need to be submitted separately.
+func SignTransactionReturnSignature(sk []byte, encodedTx []byte) (signature []byte, err error) {
+	if len(sk) != ed25519.PrivateKeySize {
+		err = fmt.Errorf("incorrect privateKey length expected %d, got %d", ed25519.PrivateKeySize, len(sk))
+		return
+	}
+
+	var tx types.Transaction
+	err = msgpack.Decode(encodedTx, &tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode transaction: %v", err)
+	}
+
+	// Sign the transaction
+	_, stxBytes, err := crypto.SignTransaction(sk, tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign transaction: %v", err)
+	}
+
+	// Extract and return the signature
+	return ExtractSignatureFromSignedTransaction(stxBytes)
+}
+
 var txidPrefix = []byte("TX")
 
 func RawTransactionBytesToSign(encodedTxn []byte) (result []byte, err error) {
@@ -334,4 +359,30 @@ func RawTransactionBytesToSign(encodedTxn []byte) (result []byte, err error) {
 	msgParts := [][]byte{txidPrefix, encodedTx}
 	result = bytes.Join(msgParts, nil)
 	return
+}
+
+// ExtractSignatureFromSignedTransaction extracts the signature bytes from a msgpack-encoded
+// signed transaction. Returns the 64-byte ed25519 signature if present, or an error if the
+// transaction is unsigned or has no standard signature (e.g., multisig or logicsig only).
+func ExtractSignatureFromSignedTransaction(signedTxnBytes []byte) (signature []byte, err error) {
+	if len(signedTxnBytes) == 0 {
+		return nil, fmt.Errorf("signed transaction bytes cannot be empty")
+	}
+
+	var stx types.SignedTxn
+	err = msgpack.Decode(signedTxnBytes, &stx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode signed transaction: %v", err)
+	}
+
+	// Check if the signature is empty (all zeros)
+	var emptySignature types.Signature
+	if stx.Sig == emptySignature {
+		return nil, fmt.Errorf("transaction has no signature")
+	}
+
+	// Return a copy of the signature bytes
+	signature = make([]byte, len(stx.Sig))
+	copy(signature, stx.Sig[:])
+	return signature, nil
 }

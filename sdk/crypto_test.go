@@ -164,6 +164,212 @@ func TestGetTxID(t *testing.T) {
 	t.Parallel()
 }
 
+func TestSignTransactionReturnSignature(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns correct signature", func(t *testing.T) {
+		t.Parallel()
+		// corresponds to 2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY
+		sk, err := mnemonic.ToPrivateKey("carbon another pair valley ride lumber exhibit chunk forget select nerve topic refuse ball bomb draw chunk toward motor detect process smile envelope abstract rule")
+		require.NoError(t, err)
+
+		gh, err := base64.StdEncoding.DecodeString("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
+		require.NoError(t, err)
+		params := types.SuggestedParams{
+			Fee:             0,
+			GenesisID:       "testnet-v1.0",
+			GenesisHash:     gh,
+			FirstRoundValid: 2,
+			LastRoundValid:  1002,
+		}
+		txn, err := transaction.MakePaymentTxn("2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY", "S64XU5HQEY2XLHVUSO6RI3JL6NHC32I4LJHM32ZOM5VC4QPON7BZZRCU2E", 1_000_000, nil, "", params)
+		require.NoError(t, err)
+		encodedTxn := msgpack.Encode(&txn)
+
+		// Get signature using new function
+		signature, err := SignTransactionReturnSignature(sk, encodedTxn)
+		require.NoError(t, err)
+		require.NotNil(t, signature)
+		require.Len(t, signature, 64) // ed25519 signature size
+
+		// Verify it matches expected signature
+		expectedSignature, err := base64.StdEncoding.DecodeString("L+e7SP6OijDGQTe4wzHdI9kXM4erxh15OOphWBXmvrEv/DjBFpgqFldJVt5Oeva50CxtzFZSbuaFhPMfsB4TBw==")
+		require.NoError(t, err)
+		require.Equal(t, expectedSignature, signature)
+	})
+
+	t.Run("signature can be attached to create valid signed transaction", func(t *testing.T) {
+		t.Parallel()
+		sk, err := mnemonic.ToPrivateKey("carbon another pair valley ride lumber exhibit chunk forget select nerve topic refuse ball bomb draw chunk toward motor detect process smile envelope abstract rule")
+		require.NoError(t, err)
+
+		gh, err := base64.StdEncoding.DecodeString("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
+		require.NoError(t, err)
+		params := types.SuggestedParams{
+			Fee:             0,
+			GenesisID:       "testnet-v1.0",
+			GenesisHash:     gh,
+			FirstRoundValid: 2,
+			LastRoundValid:  1002,
+		}
+		txn, err := transaction.MakePaymentTxn("2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY", "S64XU5HQEY2XLHVUSO6RI3JL6NHC32I4LJHM32ZOM5VC4QPON7BZZRCU2E", 1_000_000, nil, "", params)
+		require.NoError(t, err)
+		encodedTxn := msgpack.Encode(&txn)
+
+		// Sign using new function
+		signature, err := SignTransactionReturnSignature(sk, encodedTxn)
+		require.NoError(t, err)
+
+		// Attach signature to create signed transaction
+		stxBytes, err := AttachSignature(signature, encodedTxn)
+		require.NoError(t, err)
+
+		// Compare with SignTransaction result
+		expectedStxBytes, err := SignTransaction(sk, encodedTxn)
+		require.NoError(t, err)
+
+		require.Equal(t, expectedStxBytes, stxBytes)
+	})
+
+	t.Run("returns error for invalid private key length", func(t *testing.T) {
+		t.Parallel()
+		invalidSk := []byte{1, 2, 3} // too short
+
+		gh, err := base64.StdEncoding.DecodeString("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
+		require.NoError(t, err)
+		params := types.SuggestedParams{
+			Fee:             0,
+			GenesisID:       "testnet-v1.0",
+			GenesisHash:     gh,
+			FirstRoundValid: 2,
+			LastRoundValid:  1002,
+		}
+		txn, err := transaction.MakePaymentTxn("2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY", "S64XU5HQEY2XLHVUSO6RI3JL6NHC32I4LJHM32ZOM5VC4QPON7BZZRCU2E", 1_000_000, nil, "", params)
+		require.NoError(t, err)
+		encodedTxn := msgpack.Encode(&txn)
+
+		signature, err := SignTransactionReturnSignature(invalidSk, encodedTxn)
+		require.Error(t, err)
+		require.Nil(t, signature)
+	})
+
+	t.Run("returns error for invalid transaction bytes", func(t *testing.T) {
+		t.Parallel()
+		sk, err := mnemonic.ToPrivateKey("carbon another pair valley ride lumber exhibit chunk forget select nerve topic refuse ball bomb draw chunk toward motor detect process smile envelope abstract rule")
+		require.NoError(t, err)
+
+		invalidTxn := []byte{0xFF, 0xFE, 0xFD}
+		signature, err := SignTransactionReturnSignature(sk, invalidTxn)
+		require.Error(t, err)
+		require.Nil(t, signature)
+	})
+}
+
+func TestExtractSignatureFromSignedTransaction(t *testing.T) {
+	t.Parallel()
+
+	t.Run("extracts signature from valid signed transaction", func(t *testing.T) {
+		t.Parallel()
+		// This is a valid signed transaction from TestAttachSignature
+		stxnBytes, err := base64.StdEncoding.DecodeString("gqNzaWfEQC/nu0j+joowxkE3uMMx3SPZFzOHq8YdeTjqYVgV5r6xL/w4wRaYKhZXSVbeTnr2udAsbcxWUm7mhYTzH7AeEwejdHhuiaNhbXTOAA9CQKNmZWXNA+iiZnYCo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToiomx2zQPqo3JjdsQgl7l6dPAmNXWetJO9FG0r804t6RxaTs3rLmdqLkHub8Ojc25kxCDUYfSDPMXT2TQv+8ZvQtqEoK0G1xsTfW1wkIkR+AfA4qR0eXBlo3BheQ==")
+		require.NoError(t, err)
+
+		signature, err := ExtractSignatureFromSignedTransaction(stxnBytes)
+		require.NoError(t, err)
+		require.NotNil(t, signature)
+		require.Len(t, signature, 64) // ed25519 signature size
+
+		// Verify the extracted signature matches the expected signature
+		expectedSignature, err := base64.StdEncoding.DecodeString("L+e7SP6OijDGQTe4wzHdI9kXM4erxh15OOphWBXmvrEv/DjBFpgqFldJVt5Oeva50CxtzFZSbuaFhPMfsB4TBw==")
+		require.NoError(t, err)
+		require.Equal(t, expectedSignature, signature)
+	})
+
+	t.Run("returns error for unsigned transaction", func(t *testing.T) {
+		t.Parallel()
+		// Create an unsigned transaction
+		senderAddr := "2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY"
+		gh, err := base64.StdEncoding.DecodeString("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
+		require.NoError(t, err)
+		params := types.SuggestedParams{
+			Fee:             0,
+			GenesisID:       "testnet-v1.0",
+			GenesisHash:     gh,
+			FirstRoundValid: 2,
+			LastRoundValid:  1002,
+		}
+		txn, err := transaction.MakePaymentTxn(senderAddr, "S64XU5HQEY2XLHVUSO6RI3JL6NHC32I4LJHM32ZOM5VC4QPON7BZZRCU2E", 1_000_000, nil, "", params)
+		require.NoError(t, err)
+
+		// Create a SignedTxn with no signature
+		stx := types.SignedTxn{
+			Txn: txn,
+		}
+		stxnBytes := msgpack.Encode(stx)
+
+		signature, err := ExtractSignatureFromSignedTransaction(stxnBytes)
+		require.Error(t, err)
+		require.Nil(t, signature)
+	})
+
+	t.Run("returns error for empty input", func(t *testing.T) {
+		t.Parallel()
+		signature, err := ExtractSignatureFromSignedTransaction([]byte{})
+		require.Error(t, err)
+		require.Nil(t, signature)
+	})
+
+	t.Run("returns error for nil input", func(t *testing.T) {
+		t.Parallel()
+		signature, err := ExtractSignatureFromSignedTransaction(nil)
+		require.Error(t, err)
+		require.Nil(t, signature)
+	})
+
+	t.Run("returns error for invalid msgpack data", func(t *testing.T) {
+		t.Parallel()
+		invalidData := []byte{0xFF, 0xFE, 0xFD}
+		signature, err := ExtractSignatureFromSignedTransaction(invalidData)
+		require.Error(t, err)
+		require.Nil(t, signature)
+	})
+
+	t.Run("roundtrip with SignTransaction", func(t *testing.T) {
+		t.Parallel()
+		// corresponds to 2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY
+		sk, err := mnemonic.ToPrivateKey("carbon another pair valley ride lumber exhibit chunk forget select nerve topic refuse ball bomb draw chunk toward motor detect process smile envelope abstract rule")
+		require.NoError(t, err)
+
+		gh, err := base64.StdEncoding.DecodeString("SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
+		require.NoError(t, err)
+		params := types.SuggestedParams{
+			Fee:             0,
+			GenesisID:       "testnet-v1.0",
+			GenesisHash:     gh,
+			FirstRoundValid: 2,
+			LastRoundValid:  1002,
+		}
+		txn, err := transaction.MakePaymentTxn("2RQ7JAZ4YXJ5SNBP7PDG6QW2QSQK2BWXDMJX23LQSCERD6AHYDRH4N4MXY", "S64XU5HQEY2XLHVUSO6RI3JL6NHC32I4LJHM32ZOM5VC4QPON7BZZRCU2E", 1_000_000, nil, "", params)
+		require.NoError(t, err)
+		encodedTxn := msgpack.Encode(&txn)
+
+		// Sign the transaction
+		stxnBytes, err := SignTransaction(sk, encodedTxn)
+		require.NoError(t, err)
+
+		// Extract the signature
+		signature, err := ExtractSignatureFromSignedTransaction(stxnBytes)
+		require.NoError(t, err)
+		require.NotNil(t, signature)
+		require.Len(t, signature, 64)
+
+		// Attach the extracted signature to the original transaction and verify we get the same signed transaction
+		stxnBytesReconstructed, err := AttachSignature(signature, encodedTxn)
+		require.NoError(t, err)
+		require.Equal(t, stxnBytes, stxnBytesReconstructed)
+	})
+}
+
 func TestAddressFromProgram(t *testing.T) {
 	t.Parallel()
 	mustDecodeB64 := func(b64 string) []byte {
