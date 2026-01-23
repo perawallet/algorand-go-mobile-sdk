@@ -16,7 +16,7 @@ allprojects {
 }
 
 group = "app.perawallet"
-version = "1.0.5"
+version = "1.0.8"
 
 publishing {
     publications {
