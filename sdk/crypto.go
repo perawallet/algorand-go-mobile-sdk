@@ -335,3 +335,29 @@ func RawTransactionBytesToSign(encodedTxn []byte) (result []byte, err error) {
 	result = bytes.Join(msgParts, nil)
 	return
 }
+
+// ExtractSignatureFromSignedTransaction extracts the signature bytes from a msgpack-encoded
+// signed transaction. Returns the 64-byte ed25519 signature if present, or nil if the
+// transaction is unsigned or has no standard signature (e.g., multisig or logicsig only).
+func ExtractSignatureFromSignedTransaction(signedTxnBytes []byte) (signature []byte, err error) {
+	if len(signedTxnBytes) == 0 {
+		return nil, nil
+	}
+
+	var stx types.SignedTxn
+	err = msgpack.Decode(signedTxnBytes, &stx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode signed transaction: %v", err)
+	}
+
+	// Check if the signature is empty (all zeros)
+	var emptySignature types.Signature
+	if stx.Sig == emptySignature {
+		return nil, nil
+	}
+
+	// Return a copy of the signature bytes
+	signature = make([]byte, len(stx.Sig))
+	copy(signature, stx.Sig[:])
+	return signature, nil
+}
